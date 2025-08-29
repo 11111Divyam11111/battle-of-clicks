@@ -1,0 +1,34 @@
+version: "3.9"
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+
+  click-service:
+    build: ./services/click-service
+    env_file: ./services/click-service/.env
+    ports:
+      - "4001:4001"
+    depends_on:
+      - redis
+
+  aggregator-service:
+    build: ./services/aggregator-service
+    env_file: ./services/aggregator-service/.env
+    depends_on:
+      - redis
+      - mongo
+
+  realtime-service:
+    build: ./services/realtime-service
+    env_file: ./services/realtime-service/.env
+    ports:
+      - "4003:4003"
+    depends_on:
+      - redis
