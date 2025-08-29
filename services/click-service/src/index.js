@@ -1,37 +1,44 @@
 // click-service/src/index.js
 const express = require("express");
-const cors = require("cors");
 const redis = require("./redisClient");
 
 const app = express();
-app.use(express.json());
-app.use(cors()); // Enable CORS for all origins
 
-// POST /click
+// ✅ Parse JSON request bodies
+app.use(express.json());
+
 app.post("/click", async (req, res) => {
   try {
     const { team } = req.body;
-    if (!team) return res.status(400).json({ error: "Team is required" });
+    if (!team) return res.status(400).json({ message: "team is required" });
 
-    await redis.incr(team); // increment Redis counter
-    res.json({ message: "Click recorded" });
+    // Increment Redis counter
+    await redis.incr(`clicks:${team}`);
+
+    const red = parseInt(await redis.get("clicks:red")) || 0;
+    const blue = parseInt(await redis.get("clicks:blue")) || 0;
+
+    res.json({
+      message: "Click recorded ✅",
+      red,
+      blue,
+      total: red + blue,
+    });
   } catch (err) {
     console.error("❌ Error processing click:", err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// GET /score
 app.get("/score", async (req, res) => {
   try {
-    const red = parseInt(await redis.get("red") || "0");
-    const blue = parseInt(await redis.get("blue") || "0");
+    const red = parseInt(await redis.get("clicks:red")) || 0;
+    const blue = parseInt(await redis.get("clicks:blue")) || 0;
     res.json({ red, blue, total: red + blue });
   } catch (err) {
-    console.error("❌ Error getting score:", err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("❌ Error fetching score:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
-const PORT = process.env.PORT || 4001;
-app.listen(PORT, () => console.log(`✅ Click service running on port ${PORT}`));
+app.listen(4001, () => console.log("🚀 click-service running on port 4001"));

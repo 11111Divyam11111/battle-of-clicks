@@ -1,26 +1,30 @@
 // aggregator-service/src/index.js
-const express = require("express");
-const cors = require("cors");
-const redis = require("./redisClient");
+const Redis = require("./redisClient");
+const { MongoClient } = require("mongodb");
+require("dotenv").config();
 
-const app = express();
-app.use(express.json());
-app.use(cors()); // Enable CORS
+const SNAPSHOT_INTERVAL_MS = parseInt(process.env.SNAPSHOT_INTERVAL_MS) || 5000;
+const MONGO_URL = process.env.MONGO_URL || "mongodb://mongo:27017";
 
-// Save a snapshot (simulating database save)
-app.post("/snapshot", async (req, res) => {
-  try {
-    const red = parseInt(await redis.get("red") || "0");
-    const blue = parseInt(await redis.get("blue") || "0");
-    const total = red + blue;
+async function runAggregator() {
+  const client = new MongoClient(MONGO_URL);
+  await client.connect();
+  const db = client.db("boc");
+  const snapshots = db.collection("snapshots");
+  console.log("✅ Connected to MongoDB");
 
-    console.log(`💾 Snapshot saved: red=${red}, blue=${blue}, total=${total}`);
-    res.json({ red, blue, total, message: "Snapshot saved" });
-  } catch (err) {
-    console.error("❌ Error saving snapshot:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+  setInterval(async () => {
+    try {
+      const red = parseInt(await Redis.get("clicks:red")) || 0;
+      const blue = parseInt(await Redis.get("clicks:blue")) || 0;
+      const total = red + blue;
 
-const PORT = process.env.PORT || 4002;
-app.listen(PORT, () => console.log(`✅ Aggregator service running on port ${PORT}`));
+      await snapshots.insertOne({ red, blue, total, timestamp: new Date() });
+      console.log(`💾 Snapshot saved: red=${red}, blue=${blue}, total=${total}`);
+    } catch (err) {
+      console.error("❌ Error saving snapshot:", err);
+    }
+  }, SNAPSHOT_INTERVAL_MS);
+}
+
+runAggregator().catch(err => console.error("❌ Aggregator error:", err));
