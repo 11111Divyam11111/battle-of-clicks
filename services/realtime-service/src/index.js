@@ -1,13 +1,15 @@
-// realtime-service/src/index.js
 const express = require("express");
+const cors = require("cors");          // ✅ add cors
 const { Server } = require("socket.io");
 const http = require("http");
 const redis = require("./redisClient");
 require("dotenv").config();
 
 const app = express();
+app.use(cors({origin : "*"}));                        // ✅ enable CORS for HTTP routes
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+
+const io = new Server(server, { cors: { origin: "*" } }); // ✅ Socket.IO CORS
 
 // Broadcast score updates every 1 second
 setInterval(async () => {

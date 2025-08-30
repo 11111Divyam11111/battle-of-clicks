@@ -1,8 +1,12 @@
 // click-service/src/index.js
 const express = require("express");
+const cors = require("cors"); // ✅ import cors
 const redis = require("./redisClient");
 
 const app = express();
+
+// ✅ Enable CORS for all origins
+app.use(cors({origin : "*"}));    
 
 // ✅ Parse JSON request bodies
 app.use(express.json());
